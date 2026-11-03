@@ -29,8 +29,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 
-const API_URL = "http://localhost:8080/api"
-// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
 
 type Deck = { id: number; title: string; description?: string }
 type FlashCard = { id: number; deckId: number; front: string; back: string; position?: number }
