@@ -119,9 +119,37 @@ export function FlashcardApp() {
     try { await request('/decks', { method: 'POST', body: JSON.stringify({ title, description }) }); setRefresh((value) => value + 1) } catch { setError('Não foi possível criar o baralho.') }
   }
 
+  async function updateDeck(id: number, title: string, description: string) {
+    try {
+      const updatedDeck = await request<Deck>(`/decks/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ title, description })
+      })
+      setDecks((items) => items.map((d) => (d.id === id ? updatedDeck : d)))
+      if (view.kind === 'deck' && view.deck.id === id) {
+        setView({ kind: 'deck', deck: updatedDeck }, false)
+      }
+    } catch {
+      setError('Não foi possível atualizar o baralho.')
+    }
+  }
+
   async function createCard(front: string, back: string) {
     if (view.kind !== 'deck') return
     try { const card = await request<FlashCard>(`/decks/${view.deck.id}/cards`, { method: 'POST', body: JSON.stringify({ front, back }) }); setCards((items) => [...items, card]) } catch { setError('Não foi possível adicionar o cartão.') }
+  }
+
+  async function updateCard(id: number, front: string, back: string) {
+    if (view.kind !== 'deck') return
+    try {
+      const updatedCard = await request<FlashCard>(`/decks/${view.deck.id}/cards/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ front, back })
+      })
+      setCards((items) => items.map((c) => (c.id === id ? updatedCard : c)))
+    } catch {
+      setError('Não foi possível atualizar o cartão.')
+    }
   }
 
   async function deleteCard(id: number) {
@@ -165,7 +193,7 @@ export function FlashcardApp() {
       <main className="mx-auto max-w-6xl px-5 py-8 lg:px-8 lg:py-12">
         {error && <Alert variant="destructive" className="mb-6"><AlertDescription className="flex items-center justify-between gap-4">{error}<Button size="sm" variant="outline" onClick={() => setRefresh((v) => v + 1)}>Tentar novamente</Button></AlertDescription></Alert>}
         {view.kind === 'dashboard' && <Dashboard decks={decks} loading={loading} onOpen={openDeck} onDelete={deleteDeck} onCreate={createDeck} />}
-        {view.kind === 'deck' && <DeckManager deck={view.deck} cards={cards} loading={loading} onBack={() => setView({ kind: 'dashboard' })} onStudy={(studyCards) => { setCards(studyCards); setView({ kind: 'study', deck: view.deck }); }} onCreate={createCard} onDelete={deleteCard} onReorder={reorderCards} />}
+        {view.kind === 'deck' && <DeckManager deck={view.deck} cards={cards} loading={loading} onBack={() => setView({ kind: 'dashboard' })} onStudy={(studyCards) => { setCards(studyCards); setView({ kind: 'study', deck: view.deck }); }} onCreate={createCard} onUpdate={updateCard} onUpdateDeck={updateDeck} onDelete={deleteCard} onReorder={reorderCards} />}
         {view.kind === 'study' && <Study deck={view.deck} cards={cards} onBack={() => openDeck(view.deck)} />}
       </main>
     </div>
