@@ -11,7 +11,7 @@ import { Brain, ArrowRight, Lock, Mail, Sun, Moon } from 'lucide-react'
 import Link from 'next/link'
 
 function LoginForm() {
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -35,16 +35,16 @@ function LoginForm() {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: email, password }),
+        body: JSON.stringify({ identifier, password }),
       })
 
       if (!res.ok) {
-        throw new Error('E-mail ou senha inválidos.')
+        throw new Error('Usuário/E-mail ou senha inválidos.')
       }
 
       const data = await res.json()
       const token = data.token || data.accessToken
-      const user = data.user || { id: data.id || '1', name: data.name || email.split('@')[0], email }
+      const user = data.user || { id: data.id || '1', name: data.name || identifier.split('@')[0], email: identifier }
 
       if (!token) {
         throw new Error('Token de autenticação não retornado pelo servidor.')
@@ -83,15 +83,15 @@ function LoginForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-zinc-700 dark:text-zinc-300">E-mail</Label>
+            <Label htmlFor="identifier" className="text-zinc-700 dark:text-zinc-300">E-mail ou Usuário</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 w-4 h-4 text-zinc-400" />
               <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="identifier"
+                type="text"
+                placeholder="admin ou seu@email.com"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="pl-9 text-zinc-900 dark:text-white bg-white dark:bg-zinc-950 border-zinc-300 dark:border-zinc-800"
                 required
               />
