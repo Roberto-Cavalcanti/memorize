@@ -1,5 +1,6 @@
 'use client'
 
+import { useAuth } from '@/context/auth-context'
 import { BookOpen, Flame, Layers3 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -21,12 +22,16 @@ export function Dashboard({
   onDelete: (id: number) => void
   onCreate: (title: string, description: string) => void
 }) {
+  const { user } = useAuth()
+  const rawName = user?.name || user?.email?.split('@')[0] || 'estudante'
+  const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1)
+
   return (
     <>
       <div className="mb-10 flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
           <Badge variant="secondary" className="mb-3 rounded-full px-3 py-1 text-primary">PAINEL DE ESTUDOS</Badge>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl text-foreground">Olá, estudante</h1>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl text-foreground">Olá, {displayName}</h1>
           <p className="mt-2 text-muted-foreground">Escolha um baralho e continue de onde parou.</p>
         </div>
       </div>

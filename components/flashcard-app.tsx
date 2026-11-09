@@ -1,26 +1,20 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Brain, Flame, Moon, Sparkles, Sun } from 'lucide-react'
+import { Brain, Moon, Sun } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dashboard } from '@/components/dashboard'
 import { Deck } from '@/components/deck-card'
 import { DeckManager, FlashCard } from '@/components/deck-manager'
 import { Study } from '@/components/study'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
+import { useAuth } from '@/context/auth-context'
+import { LogOut } from 'lucide-react'
 
 type View =
   | { kind: 'dashboard' }
   | { kind: 'deck'; deck: Deck }
   | { kind: 'study'; deck: Deck }
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...options?.headers } })
-  if (!response.ok) throw new Error(`Erro ${response.status}`)
-  return response.status === 204 ? (undefined as T) : response.json()
-}
 
 export function FlashcardApp() {
   const [view, setViewState] = useState<View>({ kind: 'dashboard' })
@@ -30,6 +24,7 @@ export function FlashcardApp() {
   const [error, setError] = useState('')
   const [refresh, setRefresh] = useState(0)
   const [isDark, setIsDark] = useState(false)
+  const { logout, apiFetch } = useAuth()
 
   function setView(newView: View, pushHistory = true) {
     setViewState(newView)
@@ -70,7 +65,7 @@ export function FlashcardApp() {
     setLoading(true)
     setError('')
     try {
-      setCards(await request<FlashCard[]>(`/decks/${deck.id}/cards`))
+      setCards(await apiFetch<FlashCard[]>(`/decks/${deck.id}/cards`))
     } catch {
       setError('Não foi possível carregar os cartões deste baralho.')
     } finally {
@@ -79,12 +74,8 @@ export function FlashcardApp() {
   }
 
   useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains('dark') ||
-      window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isDarkMode = document.documentElement.classList.contains('dark')
     setIsDark(isDarkMode)
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark')
-    }
   }, [])
 
   function toggleTheme() {
@@ -93,35 +84,37 @@ export function FlashcardApp() {
     if (nextDark) {
       document.documentElement.classList.add('dark')
       document.documentElement.classList.remove('light')
+      document.cookie = 'theme=dark; path=/; max-age=31536000'
     } else {
       document.documentElement.classList.remove('dark')
       document.documentElement.classList.add('light')
+      document.cookie = 'theme=light; path=/; max-age=31536000'
     }
   }
 
   const loadDecks = useCallback(async () => {
     setLoading(true); setError('')
-    try { setDecks(await request<Deck[]>('/decks')) } catch { setError('Não foi possível conectar ao backend. Confirme se o Spring Boot está rodando na porta 8080.') } finally { setLoading(false) }
-  }, [])
+    try { setDecks(await apiFetch<Deck[]>('/decks')) } catch { setError('Não foi possível conectar ao backend. Confirme se o Spring Boot está rodando na porta 8080.') } finally { setLoading(false) }
+  }, [apiFetch])
 
   useEffect(() => { loadDecks() }, [loadDecks, refresh])
 
   async function openDeck(deck: Deck) {
     setView({ kind: 'deck', deck }); setLoading(true); setError('')
-    try { setCards(await request<FlashCard[]>(`/decks/${deck.id}/cards`)) } catch { setError('Não foi possível carregar os cartões deste baralho.') } finally { setLoading(false) }
+    try { setCards(await apiFetch<FlashCard[]>(`/decks/${deck.id}/cards`)) } catch { setError('Não foi possível carregar os cartões deste baralho.') } finally { setLoading(false) }
   }
 
   async function deleteDeck(id: number) {
-    try { await request(`/decks/${id}`, { method: 'DELETE' }); setDecks((items) => items.filter((deck) => deck.id !== id)) } catch { setError('Não foi possível excluir o baralho.') }
+    try { await apiFetch(`/decks/${id}`, { method: 'DELETE' }); setDecks((items) => items.filter((deck) => deck.id !== id)) } catch { setError('Não foi possível excluir o baralho.') }
   }
 
   async function createDeck(title: string, description: string) {
-    try { await request('/decks', { method: 'POST', body: JSON.stringify({ title, description }) }); setRefresh((value) => value + 1) } catch { setError('Não foi possível criar o baralho.') }
+    try { await apiFetch('/decks', { method: 'POST', body: JSON.stringify({ title, description }) }); setRefresh((value) => value + 1) } catch { setError('Não foi possível criar o baralho.') }
   }
 
   async function updateDeck(id: number, title: string, description: string) {
     try {
-      const updatedDeck = await request<Deck>(`/decks/${id}`, {
+      const updatedDeck = await apiFetch<Deck>(`/decks/${id}`, {
         method: 'PUT',
         body: JSON.stringify({ title, description })
       })
@@ -136,13 +129,13 @@ export function FlashcardApp() {
 
   async function createCard(front: string, back: string) {
     if (view.kind !== 'deck') return
-    try { const card = await request<FlashCard>(`/decks/${view.deck.id}/cards`, { method: 'POST', body: JSON.stringify({ front, back }) }); setCards((items) => [...items, card]) } catch { setError('Não foi possível adicionar o cartão.') }
+    try { const card = await apiFetch<FlashCard>(`/decks/${view.deck.id}/cards`, { method: 'POST', body: JSON.stringify({ front, back }) }); setCards((items) => [...items, card]) } catch { setError('Não foi possível adicionar o cartão.') }
   }
 
   async function updateCard(id: number, front: string, back: string) {
     if (view.kind !== 'deck') return
     try {
-      const updatedCard = await request<FlashCard>(`/decks/${view.deck.id}/cards/${id}`, {
+      const updatedCard = await apiFetch<FlashCard>(`/decks/${view.deck.id}/cards/${id}`, {
         method: 'PUT',
         body: JSON.stringify({ front, back })
       })
@@ -154,7 +147,7 @@ export function FlashcardApp() {
 
   async function deleteCard(id: number) {
     if (view.kind !== 'deck') return
-    try { await request(`/decks/${view.deck.id}/cards/${id}`, { method: 'DELETE' }); setCards((items) => items.filter((card) => card.id !== id)) } catch { setError('Não foi possível excluir o cartão.') }
+    try { await apiFetch(`/decks/${view.deck.id}/cards/${id}`, { method: 'DELETE' }); setCards((items) => items.filter((card) => card.id !== id)) } catch { setError('Não foi possível excluir o cartão.') }
   }
 
   async function reorderCards(newCards: FlashCard[]) {
@@ -162,7 +155,7 @@ export function FlashcardApp() {
     setCards(newCards)
     try {
       const cardIds = newCards.map((c) => c.id)
-      await request(`/decks/${view.deck.id}/cards/reorder`, {
+      await apiFetch(`/decks/${view.deck.id}/cards/reorder`, {
         method: 'PUT',
         body: JSON.stringify(cardIds),
       })
@@ -184,9 +177,10 @@ export function FlashcardApp() {
               {isDark ? <Sun className="size-5 text-yellow-500" /> : <Moon className="size-5 text-slate-700" />}
             </Button>
             <div className="hidden items-center gap-5 text-sm text-muted-foreground sm:flex">
-              <span className="flex items-center gap-1.5"><Flame className="text-orange-500" data-icon="inline-start" /> dias de sequência</span>
-              <span className="flex items-center gap-1.5"><Sparkles className="text-primary" data-icon="inline-start" /> Seu ritmo, seu aprendizado</span>
             </div>
+            <Button variant="outline" size="sm" onClick={() => logout()} className="gap-2">
+              <LogOut className="size-4" /> Sair
+            </Button>
           </div>
         </div>
       </header>

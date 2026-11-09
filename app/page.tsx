@@ -1,5 +1,12 @@
-import { FlashcardApp } from '@/components/flashcard-app'
+'use client'
+
+import { AuthProvider } from '@/context/auth-context'
+import { AppRouter } from '@/components/app-router'
 
 export default function Page() {
-  return <FlashcardApp />
+  return (
+    <AuthProvider>
+      <AppRouter />
+    </AuthProvider>
+  )
 }
